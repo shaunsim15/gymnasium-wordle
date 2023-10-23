@@ -1,6 +1,6 @@
-# gym-wordle
+# gymnasium-wordle
 
-A gym environment for playing the game [Wordle](https://www.powerlanguage.co.uk/wordle/).
+A gymnasium environment for playing the game [Wordle](https://www.powerlanguage.co.uk/wordle/).
 
 ## About
 Wordle is a word guessing game where the player has six guesses to guess the five letter hidden word of the day.
@@ -110,31 +110,7 @@ pip install .
 ```
 
 ## Usage
-You can initialize and use the `gym_wordle` OpenAI environment and make random guesses in the following manner:
-
-```
-import gym
-import gym_wordle
-from gym_wordle.exceptions import InvalidWordException
-
-env = gym.make('Wordle-v0')
-
-obs = env.reset()
-done = False
-while not done:
-    while True:
-        try:
-            # make a random guess
-            act = env.action_space.sample()
-
-            # take a step
-            obs, reward, done, _ = env.step(act)
-            break
-        except InvalidWordException:
-            pass
-
-    env.render()
-```
+You can initialize and use the `gym_wordle` gymnasium environment and make random guesses by running random_guess.py
 
 ## Future Improvements
 At some point, I'd like to implement the following:
