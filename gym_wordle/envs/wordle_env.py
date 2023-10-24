@@ -45,7 +45,7 @@ def strToEncode(lines): # lines is ["aback", "abase", ...]
 
 with open(filename, "r") as f:
     WORDS = strToEncode(f.readlines()) # f.readlines() reads the contents of the file f line by line and returns a list where each element is a line from the file.
-
+# WORDS is an array of tuples that represent words: [(0, 1, 0, 2, 10), (0, 1, 0, 18, 4), ...]
 
 class WordleEnv(gym.Env):
     """
@@ -101,8 +101,8 @@ class WordleEnv(gym.Env):
         # 1) Arrow Keys: 0 [None], 1 [Up], 2[Right], 3[Down], 4[Left] 
         # 2) Button A: 0 [None], 1 [Pressed] 
         # 3) Button B: 0 [None], 1 [Pressed] 
-        # You can represent a given action as spaces.MultiDiscrete([ 5, 2, 2 ]). A sample might be array([3, 1, 0])
-        self.action_space = spaces.MultiDiscrete([26] * WORD_LENGTH)
+        # For Nintendo, represent a given action as spaces.MultiDiscrete([ 5, 2, 2 ]). A sample might be array([3, 1, 0])
+        self.action_space = spaces.MultiDiscrete([26] * WORD_LENGTH) # For Wordle, represent a given action as spaces.MultiDiscrete([ 26, 26, 26, 26, 26 ]).
 
         # BOX IS ONE OF THE FUNDAMENTAL SPACES
         # It's a (possibly unbounded) box in R^n. 
@@ -122,26 +122,27 @@ class WordleEnv(gym.Env):
         })
         self.guesses = []
 
-    def step(self, action):
-        assert self.action_space.contains(action)
+
+    def step(self, action): # The action input is kinda like a 1-D numpy array with 5 values (not a tuple). e.g. "HELLO" would be array([7, 4, 11, 11, 14]) instead of (7, 4, 11, 11, 14)
+        assert self.action_space.contains(action) # test to ensure the action taken is a valid one
 
         # Action must be a valid word
-        if not tuple(action) in WORDS:
+        if not tuple(action) in WORDS: # tuple(action) converts array([7, 4, 11, 11, 14]) to (7, 4, 11, 11, 14)
             raise InvalidWordException(encodeToStr(action) + " is not a valid word.")
 
         # update game board and alphabet tracking
-        board_row_idx = GAME_LENGTH - self.guesses_left
-        for idx, char in enumerate(action):
+        board_row_idx = GAME_LENGTH - self.guesses_left # What board row (i.e. turn) we're on. On the 1st turn, this would be row 6 - 6 = 0.
+        for idx, char in enumerate(action): # If the action is "HELLO", then iterate through each index/char of hello. On 1st iteration, index  = 0, char = 7 
 
-            if self.hidden_word[idx] == char:
-                encoding = 2
+            if self.hidden_word[idx] == char: # hidden_word is the goal word. For the current slot, compare goal word with guess word. 
+                encoding = 2 # 2 means this slot is green 
             elif char in self.hidden_word:
-                encoding = 1
+                encoding = 1 # 1 means this slot is yellow
             else:
-                encoding = 0
+                encoding = 0 # 0 means this slot is grey
 
-            self.board[board_row_idx, idx] = encoding
-            self.alphabet[char] = encoding
+            self.board[board_row_idx, idx] = encoding # For the current row of the board (the current turn), set the colour the current character green/yellow/grey
+            self.alphabet[char] = encoding # Colour our keyboard green / yellow / grey. I THINK THIS LOGIC IS WRONG, because you'd overwrite past keyboard info which is potentially more accurate 
 
         # update guesses remaining tracker
         self.guesses_left -= 1
@@ -150,33 +151,33 @@ class WordleEnv(gym.Env):
         self.guesses.append(action)
 
         # check to see if game is over
-        if all(self.board[board_row_idx, :] == 2):
+        if all(self.board[board_row_idx, :] == 2): # if every slot in the current board row is green, end game and give +1 reward
             reward = 1.0
             done = True
         else:
-            if self.guesses_left > 0:
+            if self.guesses_left > 0: # if you have some guesses left, continue playing game
                 reward = 0.0
                 done = False
-            else:
-                reward = -1.0
+            else: # if you have no guesses left, you lose the game. End episode and give -1 reward.
+                reward = -1.0 
                 done = True
 
         return self._get_obs(), reward, done, {}
 
     def _get_obs(self):
-        return {'board': self.board, 'alphabet': self.alphabet}
+        return {'board': self.board, 'alphabet': self.alphabet} # the board, and the keyboard colouring that we see when we play wordle in real life
 
-    def reset(self, seed: Optional[int] = None):
+    def reset(self, seed: Optional[int] = None): # Reset the game at the end of an episode
         # super().reset(seed=seed)
-        self.hidden_word = random.choice(WORDS)
-        self.guesses_left = GAME_LENGTH
+        self.hidden_word = random.choice(WORDS) # Choose a random goal word
+        self.guesses_left = GAME_LENGTH # set guesses_left to 6
         self.board = np.negative(
-            np.ones(shape=(GAME_LENGTH, WORD_LENGTH), dtype=int))
-        self.alphabet = np.negative(np.ones(shape=(26,), dtype=int))
-        self.guesses = []
+            np.ones(shape=(GAME_LENGTH, WORD_LENGTH), dtype=int)) # board is 6 x 5 numpy array. reset each element to -1. 
+        self.alphabet = np.negative(np.ones(shape=(26,), dtype=int)) # alphabet is a 1-D NumPy array containing 26 elements. reset each element to -1. 
+        self.guesses = [] # guesses is an array of actions. An action is a word represented kinda like a 1-D numpy array with 5 values (not a tuple).
         return self._get_obs()
 
-    def render(self, mode="human"):
+    def render(self, mode="human"): # render mode is "human" by default
         assert mode in ["human"], "Invalid mode, must be \"human\""
         print('###################################################')
         for i in range(len(self.guesses)):
